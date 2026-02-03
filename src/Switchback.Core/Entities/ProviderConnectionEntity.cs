@@ -28,4 +28,7 @@ public class ProviderConnectionEntity : ITableEntity
 
     /// <summary>When the account was connected.</summary>
     public DateTimeOffset? ConnectedAt { get; set; }
+
+    /// <summary>User's email address for this provider (e.g. for Gmail push lookup).</summary>
+    public string? EmailAddress { get; set; }
 }

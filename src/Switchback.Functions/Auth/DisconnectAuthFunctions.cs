@@ -12,15 +12,18 @@ public class DisconnectAuthFunctions
 {
     private readonly IConfiguration _config;
     private readonly IProviderConnectionRepository _connections;
+    private readonly IUserEmailRepository _userEmail;
     private readonly ILogger _logger;
 
     public DisconnectAuthFunctions(
         IConfiguration config,
         IProviderConnectionRepository connections,
+        IUserEmailRepository userEmail,
         ILoggerFactory loggerFactory)
     {
         _config = config;
         _connections = connections;
+        _userEmail = userEmail;
         _logger = loggerFactory.CreateLogger<DisconnectAuthFunctions>();
     }
 
@@ -44,6 +47,10 @@ public class DisconnectAuthFunctions
             await bad.WriteStringAsync("Invalid provider");
             return bad;
         }
+
+        var connection = await _connections.GetAsync(userId, provider);
+        if (connection?.EmailAddress != null)
+            await _userEmail.DeleteAsync(provider, connection.EmailAddress);
 
         await _connections.DeleteAsync(userId, provider);
 

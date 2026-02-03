@@ -16,8 +16,10 @@ public class GmailAuthFunctions
     private const string GmailTokenUrl = "https://oauth2.googleapis.com/token";
     private const string GmailScope = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify";
 
+    private const string GmailProfileUrl = "https://gmail.googleapis.com/gmail/v1/users/me/profile";
     private readonly IConfiguration _config;
     private readonly IProviderConnectionRepository _connections;
+    private readonly IUserEmailRepository _userEmail;
     private readonly IEncryptionService _encryption;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger _logger;
@@ -25,12 +27,14 @@ public class GmailAuthFunctions
     public GmailAuthFunctions(
         IConfiguration config,
         IProviderConnectionRepository connections,
+        IUserEmailRepository userEmail,
         IEncryptionService encryption,
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory)
     {
         _config = config;
         _connections = connections;
+        _userEmail = userEmail;
         _encryption = encryption;
         _httpClientFactory = httpClientFactory;
         _logger = loggerFactory.CreateLogger<GmailAuthFunctions>();
@@ -147,6 +151,32 @@ public class GmailAuthFunctions
             TokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn),
             ConnectedAt = DateTimeOffset.UtcNow
         };
+
+        using (var httpForProfile = _httpClientFactory.CreateClient())
+        {
+            httpForProfile.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            var profileResponse = await httpForProfile.GetAsync(GmailProfileUrl);
+            if (profileResponse.IsSuccessStatusCode)
+            {
+                var profileJson = await profileResponse.Content.ReadAsStringAsync();
+                var profileDoc = System.Text.Json.JsonDocument.Parse(profileJson);
+                if (profileDoc.RootElement.TryGetProperty("emailAddress", out var emailEl))
+                {
+                    var emailAddress = emailEl.GetString()?.Trim();
+                    if (!string.IsNullOrEmpty(emailAddress))
+                    {
+                        entity.EmailAddress = emailAddress;
+                        await _userEmail.UpsertAsync(new UserEmailEntity
+                        {
+                            PartitionKey = ProviderConnectionEntity.ProviderGmail,
+                            RowKey = emailAddress,
+                            UserId = userId
+                        });
+                    }
+                }
+            }
+        }
+
         await _connections.UpsertAsync(entity);
 
         var redirectUrl = $"{webBaseUrl.TrimEnd('/')}/Connections?connected=Gmail";
