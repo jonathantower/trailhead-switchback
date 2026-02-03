@@ -1,0 +1,38 @@
+@page
+@model Switchback.Web.Pages.Rules.EditModel
+@{
+    ViewData["Title"] = "Edit rule";
+}
+
+<h1>Edit rule</h1>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <p><strong>@Model.Error</strong></p>
+}
+
+<form method="post" asp-route-id="@Model.Id">
+    <div>
+        <label asp-for="Name"></label>
+        <input asp-for="Name" />
+        <span asp-validation-for="Name"></span>
+    </div>
+    <div>
+        <label asp-for="Prompt"></label>
+        <textarea asp-for="Prompt" rows="4"></textarea>
+        <span asp-validation-for="Prompt"></span>
+    </div>
+    <div>
+        <label asp-for="Destination"></label>
+        <input asp-for="Destination" />
+        <span asp-validation-for="Destination"></span>
+    </div>
+    <div>
+        <label asp-for="Enabled"></label>
+        <input asp-for="Enabled" type="checkbox" />
+    </div>
+    <div asp-validation-summary="All"></div>
+    <button type="submit">Save</button>
+</form>
+
+<p><a asp-page="Index">Back to rules</a></p>

@@ -18,6 +18,7 @@ var host = new HostBuilder()
             services.AddSingleton(new TableServiceClient(connectionString));
             services.AddSingleton<IUserRepository, TableUserRepository>();
             services.AddSingleton<IProviderConnectionRepository, TableProviderConnectionRepository>();
+            services.AddSingleton<IRuleRepository, TableRuleRepository>();
         }
 
         var kvUri = config["KeyVault:VaultUri"];
