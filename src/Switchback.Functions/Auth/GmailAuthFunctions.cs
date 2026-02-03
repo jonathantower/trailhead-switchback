@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text;
+using System.Text.Json;
 using System.Web;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -17,9 +19,11 @@ public class GmailAuthFunctions
     private const string GmailScope = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify";
 
     private const string GmailProfileUrl = "https://gmail.googleapis.com/gmail/v1/users/me/profile";
+    private const string GmailWatchUrl = "https://gmail.googleapis.com/gmail/v1/users/me/watch";
     private readonly IConfiguration _config;
     private readonly IProviderConnectionRepository _connections;
     private readonly IUserEmailRepository _userEmail;
+    private readonly IGmailWatchRepository _gmailWatch;
     private readonly IEncryptionService _encryption;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger _logger;
@@ -28,6 +32,7 @@ public class GmailAuthFunctions
         IConfiguration config,
         IProviderConnectionRepository connections,
         IUserEmailRepository userEmail,
+        IGmailWatchRepository gmailWatch,
         IEncryptionService encryption,
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory)
@@ -35,6 +40,7 @@ public class GmailAuthFunctions
         _config = config;
         _connections = connections;
         _userEmail = userEmail;
+        _gmailWatch = gmailWatch;
         _encryption = encryption;
         _httpClientFactory = httpClientFactory;
         _logger = loggerFactory.CreateLogger<GmailAuthFunctions>();
@@ -174,6 +180,39 @@ public class GmailAuthFunctions
                         });
                     }
                 }
+            }
+        }
+
+        var pubSubTopic = _config["Gmail:PubSubTopic"]?.Trim();
+        if (!string.IsNullOrEmpty(pubSubTopic))
+        {
+            using (var httpWatch = _httpClientFactory.CreateClient())
+            {
+                httpWatch.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                var watchBody = JsonSerializer.Serialize(new { topicName = pubSubTopic });
+                var watchContent = new StringContent(watchBody, Encoding.UTF8, "application/json");
+                var watchResponse = await httpWatch.PostAsync(GmailWatchUrl, watchContent);
+                if (watchResponse.IsSuccessStatusCode)
+                {
+                    var watchJson = await watchResponse.Content.ReadAsStringAsync();
+                    var watchDoc = JsonDocument.Parse(watchJson);
+                    if (watchDoc.RootElement.TryGetProperty("expiration", out var expEl))
+                    {
+                        long expirationMs = expEl.ValueKind == JsonValueKind.Number ? expEl.GetInt64() : (long.TryParse(expEl.GetString(), out var ms) ? ms : 0);
+                        if (expirationMs > 0)
+                        {
+                            entity.GmailWatchExpiresAtMs = expirationMs;
+                            await _gmailWatch.UpsertAsync(new GmailWatchEntity
+                            {
+                                PartitionKey = GmailWatchEntity.PartitionKeyValue,
+                                RowKey = userId,
+                                ExpiresAtMs = expirationMs
+                            });
+                        }
+                    }
+                }
+                else
+                    _logger.LogWarning("Gmail watch failed: {Status}", watchResponse.StatusCode);
             }
         }
 

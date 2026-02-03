@@ -31,4 +31,7 @@ public class ProviderConnectionEntity : ITableEntity
 
     /// <summary>User's email address for this provider (e.g. for Gmail push lookup).</summary>
     public string? EmailAddress { get; set; }
+
+    /// <summary>Gmail watch expiration (epoch milliseconds). When to renew watch. Null for M365 or when watch not set.</summary>
+    public long? GmailWatchExpiresAtMs { get; set; }
 }

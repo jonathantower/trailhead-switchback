@@ -20,17 +20,15 @@ This document describes how to set up Gmail push notifications via Google Cloud 
    - For local testing, use a tunnel URL (e.g. ngrok): `https://YOUR-TUNNEL.ngrok.io/api/webhook/gmail`.
 5. Grant the Gmail API permission to publish to the topic: see [Gmail Push Notifications](https://developers.google.com/gmail/api/guides/push#grant_publish_permissions).
 
-## 2. Gmail API Watch (per user)
+## 2. App setting: Gmail:PubSubTopic
 
-When a user connects Gmail (OAuth callback), the app stores their connection. To receive push notifications for that user's mailbox, you must call the Gmail API **users.watch**:
+Set **Gmail:PubSubTopic** in the Function App to the full topic name, e.g. `projects/YOUR_PROJECT_ID/topics/gmail-push`. When set:
 
-- **Endpoint:** `POST https://gmail.googleapis.com/gmail/v1/users/me/watch`
-- **Body:** `{ "topicName": "projects/YOUR_PROJECT_ID/topics/gmail-push" }`
-- **Headers:** `Authorization: Bearer <user's access token>`
+- **On connect:** When a user connects Gmail (OAuth callback), the app calls Gmail API **users.watch** with this topic and stores the returned `expiration` (epoch ms) for renewal.
+- **On disconnect:** The app calls Gmail API **users.stop** and removes the watch record.
+- **Renewal:** A timer function runs daily (2:00 UTC) and renews any watch expiring within the next 24 hours by re-calling **users.watch**.
 
-The response includes `historyId` and `expiration` (milliseconds). Gmail will send push notifications to your Pub/Sub topic until `expiration`; you must re-call `watch` before expiration to keep receiving pushes (see Epic F for renewal).
-
-For the MVP, if you do not set up watch, you can still process individual messages via the manual endpoint: `POST /api/process?userId=...&provider=Gmail&messageId=...`.
+If **Gmail:PubSubTopic** is not set, the app does not call watch on connect; you can still process messages via the manual endpoint: `POST /api/process?userId=...&provider=Gmail&messageId=...`.
 
 ## 3. Function App URL
 

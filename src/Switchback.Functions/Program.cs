@@ -23,6 +23,7 @@ var host = new HostBuilder()
             services.AddSingleton<IActivityRepository, TableActivityRepository>();
             services.AddSingleton<IProcessedMessageRepository, TableProcessedMessageRepository>();
             services.AddSingleton<IUserEmailRepository, TableUserEmailRepository>();
+            services.AddSingleton<IGmailWatchRepository, TableGmailWatchRepository>();
         }
 
         var kvUri = config["KeyVault:VaultUri"];

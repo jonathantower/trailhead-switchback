@@ -8,4 +8,5 @@ public static class TableStorageConstants
     public const string TableActivity = "Activity";
     public const string TableProcessedMessages = "ProcessedMessages";
     public const string TableUserEmail = "UserEmail";
+    public const string TableGmailWatch = "GmailWatch";
 }

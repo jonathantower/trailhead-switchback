@@ -5,25 +5,36 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Switchback.Core.Entities;
 using Switchback.Core.Repositories;
+using Switchback.Core.Services;
 
 namespace Switchback.Functions.Auth;
 
 public class DisconnectAuthFunctions
 {
+    private const string GmailStopUrl = "https://gmail.googleapis.com/gmail/v1/users/me/stop";
     private readonly IConfiguration _config;
     private readonly IProviderConnectionRepository _connections;
     private readonly IUserEmailRepository _userEmail;
+    private readonly IGmailWatchRepository _gmailWatch;
+    private readonly IAccessTokenProvider _tokens;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger _logger;
 
     public DisconnectAuthFunctions(
         IConfiguration config,
         IProviderConnectionRepository connections,
         IUserEmailRepository userEmail,
+        IGmailWatchRepository gmailWatch,
+        IAccessTokenProvider tokens,
+        IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory)
     {
         _config = config;
         _connections = connections;
         _userEmail = userEmail;
+        _gmailWatch = gmailWatch;
+        _tokens = tokens;
+        _httpClientFactory = httpClientFactory;
         _logger = loggerFactory.CreateLogger<DisconnectAuthFunctions>();
     }
 
@@ -46,6 +57,19 @@ public class DisconnectAuthFunctions
             var bad = req.CreateResponse(HttpStatusCode.BadRequest);
             await bad.WriteStringAsync("Invalid provider");
             return bad;
+        }
+
+        if (provider == ProviderConnectionEntity.ProviderGmail)
+        {
+            var accessToken = await _tokens.GetAccessTokenAsync(userId, provider);
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                using var http = _httpClientFactory.CreateClient();
+                using var stopReq = new HttpRequestMessage(HttpMethod.Post, GmailStopUrl);
+                stopReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                _ = await http.SendAsync(stopReq);
+            }
+            await _gmailWatch.DeleteAsync(userId);
         }
 
         var connection = await _connections.GetAsync(userId, provider);
