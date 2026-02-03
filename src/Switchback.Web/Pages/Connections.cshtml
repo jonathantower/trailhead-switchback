@@ -1,0 +1,32 @@
+@page
+@model ConnectionsModel
+@{
+    ViewData["Title"] = "Account connections";
+}
+
+<h1>Account connections</h1>
+
+@if (Model.ConnectedGmail)
+{
+    <p><strong>Gmail:</strong> Connected. <a href="@Model.DisconnectGmailUrl">Disconnect</a></p>
+}
+else
+{
+    <p><strong>Gmail:</strong> Not connected. <a href="@Model.ConnectGmailUrl">Connect Gmail</a></p>
+}
+
+@if (Model.ConnectedM365)
+{
+    <p><strong>Microsoft 365:</strong> Connected. <a href="@Model.DisconnectM365Url">Disconnect</a></p>
+}
+else
+{
+    <p><strong>Microsoft 365:</strong> Not connected. <a href="@Model.ConnectM365Url">Connect Microsoft 365</a></p>
+}
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <p><em>@Model.Message</em></p>
+}
+
+<p><a asp-page="/Index">Home</a> | <a asp-page="/Logout">Log out</a></p>

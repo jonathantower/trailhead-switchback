@@ -9,6 +9,16 @@
     <header>
         <nav>
             <a asp-page="/Index">Home</a>
+            <a asp-page="/Connections">Connections</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a asp-page="/Logout">Log out</a>
+            }
+            else
+            {
+                <a asp-page="/Login">Log in</a>
+                <a asp-page="/Register">Sign up</a>
+            }
         </nav>
     </header>
     <main>
