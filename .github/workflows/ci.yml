@@ -24,4 +24,4 @@ jobs:
         run: dotnet build Switchback.sln --no-restore -c Release
 
       - name: Test
-        run: dotnet test Switchback.sln --no-build -c Release --verbosity normal
+        run: dotnet run --project tests/Switchback.Core.Tests/Switchback.Core.Tests.csproj --no-build -c Release
