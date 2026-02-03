@@ -1,0 +1,45 @@
+@page
+@model ActivityModel
+@{
+    ViewData["Title"] = "Activity";
+}
+
+<h1>Recent activity</h1>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <p><strong>@Model.Error</strong></p>
+}
+
+@if (Model.Activities.Count == 0 && string.IsNullOrEmpty(Model.Error))
+{
+    <p>No activity yet. Processed emails will appear here (last 50).</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Processed</th>
+                <th>Subject</th>
+                <th>Rule</th>
+                <th>Destination</th>
+                <th>Provider</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model.Activities)
+            {
+                <tr>
+                    <td>@a.ProcessedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(a.Subject.Length > 60 ? a.Subject[..60] + "…" : a.Subject)</td>
+                    <td>@a.RuleApplied</td>
+                    <td>@a.Destination</td>
+                    <td>@a.Provider</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<p><a asp-page="/Index">Home</a> | <a asp-page="/Connections">Connections</a> | <a asp-page="/Rules/Index">Rules</a> | <a asp-page="/Logout">Log out</a></p>
