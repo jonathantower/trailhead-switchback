@@ -1,0 +1,51 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.rsuser
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+packages/
+
+# Azure Functions
+local.settings.json
+.python_packages/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE / OS
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
+# Test / coverage
+coverage/
+*.coverage
+TestResults/
+*.trx
+*.Coverage
+
+# Logs
+logs/
+*.log
