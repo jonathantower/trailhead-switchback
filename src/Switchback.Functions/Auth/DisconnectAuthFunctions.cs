@@ -40,7 +40,7 @@ public class DisconnectAuthFunctions
 
     [Function("AuthDisconnect")]
     public async Task<HttpResponseData> Disconnect(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "auth/disconnect")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "api/auth/disconnect")] HttpRequestData req)
     {
         var userId = req.Query["userId"];
         var provider = req.Query["provider"];

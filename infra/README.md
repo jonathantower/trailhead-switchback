@@ -76,22 +76,25 @@ To use Azure Storage as the Terraform backend:
 
 ## Variables
 
-| Variable        | Description |
-|----------------|-------------|
-| `environment`  | Environment name (e.g. `dev`, `prod`). Used in resource naming and tags. |
-| `location`     | Azure region (default: `East US`). |
-| `name_suffix`  | Short unique suffix for globally unique names (e.g. `dev`, `prod`, or tenant initials). Lowercase, 3–8 chars. Required because storage account and Key Vault names are globally unique. |
+| Variable         | Description |
+|------------------|-------------|
+| `environment`    | Environment name (e.g. `dev`, `prod`). Used in resource naming and tags. |
+| `location`      | Azure region (default: `East US`). |
+| `name_suffix`   | Short unique suffix for globally unique names (e.g. `dev`, `prod`, or tenant initials). Lowercase, 3–8 chars. Required because storage account and Key Vault names are globally unique. |
+| `implementation`| Implementation variant for multi-version deployment (default: `cursor`). This repo deploys as **switchback-cursor** so it can run alongside other AI-tool implementations (e.g. copilot, claude). Resource groups and resource names include this value. |
 
 ## Resources Created
 
-- **Resource group** – All resources are created in one RG per environment.
+- **Resource group** – `rg-<environment>-switchback-<implementation>` (e.g. `rg-dev-switchback-cursor`). All resources are created in one RG per environment and implementation.
 - **Storage account** – Used by the Function App (host) and for Azure Table Storage (app data).
 - **Log Analytics workspace** – For Application Insights logs.
 - **Application Insights** – Logging and monitoring for the Function App.
 - **Key Vault** – Holds the RSA key for token envelope encryption and (optionally) secrets. No plaintext secrets in Function App settings where avoidable.
 - **Key Vault key** – RSA key used for encrypting/decrypting OAuth tokens at rest.
 - **Linux Consumption plan** – Hosting plan for Azure Functions (SKU Y1).
-- **Linux Function App** – .NET 8 isolated worker; system-assigned Managed Identity; access to Key Vault (Get secrets, Unwrap/Wrap key).
+- **Linux Function App** – .NET 8 isolated worker; system-assigned Managed Identity; access to Key Vault (Get secrets, Unwrap/Wrap key). Set `AzureOpenAI:Endpoint`, `AzureOpenAI:ApiKey`, and `AzureOpenAI:Deployment` manually in Function App Configuration if you have an existing Azure OpenAI resource.
+- **App Service Plan** – Hosting plan for the admin Web app (F1 free tier for dev, B1 for prod).
+- **Linux Web app** – Admin UI (Rules, Connections, Activity); .NET 8; app settings for Table Storage and Function App URL. Deploy the Web project (e.g. `dotnet publish` then Azure Web App deploy or GitHub Actions).
 
 ## Required Resource Providers
 
@@ -110,8 +113,17 @@ az provider show -n Microsoft.Web --query "registrationState" -o tsv
 az provider register -n Microsoft.Web
 ```
 
+## Production secrets (Key Vault references)
+
+In production, avoid storing connection strings and OAuth secrets in plaintext. Use Key Vault references in the Function App (and Web App) configuration:
+
+- **AzureWebJobsStorage:** `@Microsoft.KeyVault(SecretUri=https://YOUR-KV.vault.azure.net/secrets/storage-connection-string/)`
+- **Gmail:ClientSecret**, **M365:ClientSecret:** Store in Key Vault and reference via `@Microsoft.KeyVault(SecretUri=...)`
+
+Create the secrets in Key Vault (e.g. via Terraform `azurerm_key_vault_secret` or manually). Grant the Function App’s Managed Identity **Get** and **List** on secrets. The Terraform `azurerm_key_vault_access_policy.function_app` already grants key permissions; add secret permissions if you store OAuth secrets in Key Vault. For the Web App, enable Managed Identity and add an access policy for it if the Web App reads secrets from Key Vault.
+
 ## Troubleshooting
 
-- **Storage account name already exists:** Change `name_suffix` in your `.tfvars` (e.g. add a random suffix) – storage account names are globally unique.
+- **Storage account name already exists:** Change `name_suffix` in your `.tfvars` (e.g. add a random suffix) – storage account names are globally unique. Storage names use a 3-character implementation prefix (e.g. `cur` for cursor) to stay within the 24-character limit.
 - **Key Vault name invalid:** Key Vault names must be 3–24 characters, alphanumeric and hyphens. The `name_suffix` is used to keep names short and unique.
 - **Permission errors on apply:** Ensure your Azure identity has Contributor (or equivalent) on the subscription or resource group. For Key Vault, Terraform needs permission to create access policies and secrets.

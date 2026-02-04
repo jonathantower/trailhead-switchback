@@ -31,8 +31,9 @@ public sealed class TableRuleRepository : IRuleRepository
     {
         ArgumentNullException.ThrowIfNull(userId);
         var list = new List<RuleEntity>();
+        var safeUserId = TableStorageConstants.EscapeODataString(userId);
         await foreach (var entity in _table.QueryAsync<RuleEntity>(
-            filter: $"PartitionKey eq '{userId}'",
+            filter: $"PartitionKey eq '{safeUserId}'",
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             list.Add(entity);

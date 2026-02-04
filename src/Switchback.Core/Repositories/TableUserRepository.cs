@@ -33,8 +33,9 @@ public sealed class TableUserRepository : IUserRepository
     public async Task<UserEntity?> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(userId);
+        var safeUserId = TableStorageConstants.EscapeODataString(userId);
         await foreach (var entity in _table.QueryAsync<UserEntity>(
-            filter: $"PartitionKey eq '{UserEntity.PartitionKeyValue}' and UserId eq '{userId}'",
+            filter: $"PartitionKey eq '{UserEntity.PartitionKeyValue}' and UserId eq '{safeUserId}'",
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             return entity;

@@ -38,3 +38,13 @@ output "application_insights_instrumentation_key" {
   value       = azurerm_application_insights.main.instrumentation_key
   sensitive   = true
 }
+
+output "web_app_name" {
+  description = "Name of the admin Web app"
+  value       = azurerm_linux_web_app.main.name
+}
+
+output "web_app_url" {
+  description = "URL of the admin Web app"
+  value       = "https://${azurerm_linux_web_app.main.default_hostname}"
+}

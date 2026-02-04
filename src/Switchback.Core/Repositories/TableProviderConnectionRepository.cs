@@ -31,8 +31,9 @@ public sealed class TableProviderConnectionRepository : IProviderConnectionRepos
     {
         ArgumentNullException.ThrowIfNull(userId);
         var list = new List<ProviderConnectionEntity>();
+        var safeUserId = TableStorageConstants.EscapeODataString(userId);
         await foreach (var entity in _table.QueryAsync<ProviderConnectionEntity>(
-            filter: $"PartitionKey eq '{userId}'",
+            filter: $"PartitionKey eq '{safeUserId}'",
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             list.Add(entity);

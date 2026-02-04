@@ -9,6 +9,11 @@ using Switchback.Core.Repositories;
 
 namespace Switchback.Functions.Api;
 
+internal static class RulesJson
+{
+    public static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+}
+
 public class RulesApiFunctions
 {
     private readonly IConfiguration _config;
@@ -89,7 +94,7 @@ public class RulesApiFunctions
         try
         {
             var body = await req.ReadAsStringAsync();
-            dto = JsonSerializer.Deserialize<RuleCreateDto>(body ?? "{}");
+            dto = JsonSerializer.Deserialize<RuleCreateDto>(body ?? "{}", RulesJson.Options);
         }
         catch
         {
@@ -156,7 +161,7 @@ public class RulesApiFunctions
         try
         {
             var body = await req.ReadAsStringAsync();
-            dto = JsonSerializer.Deserialize<RuleCreateDto>(body ?? "{}");
+            dto = JsonSerializer.Deserialize<RuleCreateDto>(body ?? "{}", RulesJson.Options);
         }
         catch
         {

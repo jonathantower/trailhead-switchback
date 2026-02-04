@@ -37,7 +37,7 @@ public class M365AuthFunctions
 
     [Function("M365AuthStart")]
     public async Task<HttpResponseData> Start(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "auth/m365/start")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/auth/m365/start")] HttpRequestData req)
     {
         var userId = req.Query["userId"];
         if (string.IsNullOrEmpty(userId))
@@ -78,7 +78,7 @@ public class M365AuthFunctions
 
     [Function("M365AuthCallback")]
     public async Task<HttpResponseData> Callback(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "auth/m365/callback")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/auth/m365/callback")] HttpRequestData req)
     {
         var code = req.Query["code"];
         var state = req.Query["state"];

@@ -1,0 +1,76 @@
+name: Deploy Function App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Switchback.Functions/**'
+      - 'src/Switchback.Core/**'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment (dev or prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'src/Switchback.Functions'
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Function App name and resource group
+        id: set-names
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          # Use secret if set, otherwise construct from convention
+          if [ -n "${{ secrets.FUNCTION_APP_NAME_DEV }}" ] && [ "$ENV" = "dev" ]; then
+            echo "function_app_name=${{ secrets.FUNCTION_APP_NAME_DEV }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ secrets.FUNCTION_APP_NAME_PROD }}" ] && [ "$ENV" = "prod" ]; then
+            echo "function_app_name=${{ secrets.FUNCTION_APP_NAME_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "function_app_name=func-${ENV}-switchback-cursor-dev" >> $GITHUB_OUTPUT
+          fi
+          echo "resource_group_name=rg-${ENV}-switchback-cursor" >> $GITHUB_OUTPUT
+
+      - name: Restore dependencies
+        run: dotnet restore Switchback.sln
+
+      - name: Build
+        run: dotnet build Switchback.sln --no-restore -c Release
+
+      - name: Publish Function App
+        run: dotnet publish ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/Switchback.Functions.csproj -c Release --no-build -o publish
+
+      - name: Create deployment package
+        run: |
+          cd publish
+          zip -r ../functionapp.zip . -q
+
+      - name: Deploy to Azure Function App
+        run: |
+          az functionapp deployment source config-zip \
+            --resource-group ${{ steps.set-names.outputs.resource_group_name }} \
+            --name ${{ steps.set-names.outputs.function_app_name }} \
+            --src functionapp.zip

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Switchback.Core.Repositories;
 using Switchback.Core.Services;
+using Switchback.Functions.Infrastructure;
 using Switchback.Functions.Services;
 
 var host = new HostBuilder()
@@ -13,7 +14,7 @@ var host = new HostBuilder()
     .ConfigureServices((context, services) =>
     {
         var config = context.Configuration;
-        var connectionString = config["AzureWebJobsStorage"];
+        var connectionString = config["ConnectionStrings:TableStorage"] ?? config["AzureWebJobsStorage"];
         if (!string.IsNullOrEmpty(connectionString))
         {
             services.AddSingleton(new TableServiceClient(connectionString));
@@ -24,9 +25,10 @@ var host = new HostBuilder()
             services.AddSingleton<IProcessedMessageRepository, TableProcessedMessageRepository>();
             services.AddSingleton<IUserEmailRepository, TableUserEmailRepository>();
             services.AddSingleton<IGmailWatchRepository, TableGmailWatchRepository>();
+            services.AddHostedService<TableStorageInitializer>();
         }
 
-        var kvUri = config["KeyVault:VaultUri"];
+        var kvUri = config["KeyVault:VaultUri"]?.Trim();
         var keyName = config["KeyVault:TokenEncryptionKeyName"] ?? "token-encryption-key";
         if (!string.IsNullOrEmpty(kvUri))
         {
@@ -34,6 +36,8 @@ var host = new HostBuilder()
             services.AddSingleton(new CryptographyClient(keyId, new DefaultAzureCredential()));
             services.AddSingleton<IEncryptionService, KeyVaultEncryptionService>();
         }
+        else
+            services.AddSingleton<IEncryptionService, DevelopmentEncryptionService>();
 
         var openAiEndpoint = config["AzureOpenAI:Endpoint"]?.TrimEnd('/');
         var openAiKey = config["AzureOpenAI:ApiKey"];

@@ -1,0 +1,70 @@
+name: Deploy Web App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Switchback.Web/**'
+      - 'src/Switchback.Core/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment (dev or prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  AZURE_WEBAPP_PACKAGE_PATH: 'src/Switchback.Web'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Web App name and resource group
+        id: set-names
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          # Use secret if set, otherwise construct from convention
+          if [ -n "${{ secrets.WEB_APP_NAME_DEV }}" ] && [ "$ENV" = "dev" ]; then
+            echo "web_app_name=${{ secrets.WEB_APP_NAME_DEV }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ secrets.WEB_APP_NAME_PROD }}" ] && [ "$ENV" = "prod" ]; then
+            echo "web_app_name=${{ secrets.WEB_APP_NAME_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "web_app_name=web-${ENV}-switchback-cursor-dev" >> $GITHUB_OUTPUT
+          fi
+          echo "resource_group_name=rg-${ENV}-switchback-cursor" >> $GITHUB_OUTPUT
+
+      - name: Restore dependencies
+        run: dotnet restore Switchback.sln
+
+      - name: Build
+        run: dotnet build Switchback.sln --no-restore -c Release
+
+      - name: Publish
+        run: dotnet publish ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Switchback.Web.csproj -c Release --no-build -o publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.set-names.outputs.web_app_name }}
+          package: ./publish

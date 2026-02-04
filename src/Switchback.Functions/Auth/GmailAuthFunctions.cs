@@ -48,7 +48,7 @@ public class GmailAuthFunctions
 
     [Function("GmailAuthStart")]
     public async Task<HttpResponseData> Start(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "auth/gmail/start")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/auth/gmail/start")] HttpRequestData req)
     {
         var userId = req.Query["userId"];
         if (string.IsNullOrEmpty(userId))
@@ -79,7 +79,7 @@ public class GmailAuthFunctions
 
     [Function("GmailAuthCallback")]
     public async Task<HttpResponseData> Callback(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "auth/gmail/callback")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/auth/gmail/callback")] HttpRequestData req)
     {
         var code = req.Query["code"];
         var state = req.Query["state"];

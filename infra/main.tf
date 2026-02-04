@@ -14,17 +14,19 @@ terraform {
 
 locals {
   common_tags = {
-    environment = var.environment
-    project     = "switchback"
+    environment    = var.environment
+    project        = "switchback"
+    implementation = var.implementation
   }
-  # Storage account names: 3-24 chars, lowercase alphanumeric only, globally unique
-  storage_account_name = "st${var.environment}switchback${var.name_suffix}"
-  function_app_name    = "func-${var.environment}-switchback-${var.name_suffix}"
-  key_vault_name       = substr("kv-${var.environment}-switchback-${var.name_suffix}", 0, 24)
+  # Storage: 3-24 chars, lowercase alphanumeric. Use short impl suffix to fit (cursor->cur, copilot->cop, claude->cla).
+  impl_short     = substr(var.implementation, 0, 3)
+  storage_account_name = substr("st${var.environment}switchback${local.impl_short}${var.name_suffix}", 0, 24)
+  function_app_name    = "func-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
+  key_vault_name       = substr("kv-${var.environment}-switchback-${var.implementation}", 0, 24)
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-${var.environment}-switchback"
+  name     = "rg-${var.environment}-switchback-${var.implementation}"
   location = var.location
   tags     = local.common_tags
 }
@@ -42,7 +44,7 @@ resource "azurerm_storage_account" "main" {
 
 # Log Analytics Workspace (minimal, for App Insights)
 resource "azurerm_log_analytics_workspace" "main" {
-  name                = "log-${var.environment}-switchback-${var.name_suffix}"
+  name                = "log-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "PerGB2018"
@@ -52,7 +54,7 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 # Application Insights for logging
 resource "azurerm_application_insights" "main" {
-  name                = "appi-${var.environment}-switchback-${var.name_suffix}"
+  name                = "appi-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
   resource_group_name = azurerm_resource_group.rg.name
   location             = azurerm_resource_group.rg.location
   workspace_id         = azurerm_log_analytics_workspace.main.id
@@ -72,6 +74,18 @@ resource "azurerm_key_vault" "main" {
   tags                        = local.common_tags
 }
 
+# Store storage account connection string in Key Vault so Function App can reference it (no plaintext secrets in app settings)
+data "azurerm_client_config" "current" {}
+
+# Terraform identity needs to set secrets and keys (e.g. storage connection string, encryption key) during apply
+resource "azurerm_key_vault_access_policy" "terraform" {
+  key_vault_id = azurerm_key_vault.main.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = data.azurerm_client_config.current.object_id
+  secret_permissions = ["Get", "List", "Set", "Delete", "Recover", "Purge"]
+  key_permissions    = ["Get", "List", "Create", "Decrypt", "Encrypt", "UnwrapKey", "WrapKey", "GetRotationPolicy"]
+}
+
 # RSA key in Key Vault for envelope encryption of OAuth tokens
 resource "azurerm_key_vault_key" "token_encryption" {
   name         = "token-encryption-key"
@@ -79,18 +93,7 @@ resource "azurerm_key_vault_key" "token_encryption" {
   key_type     = "RSA"
   key_size     = 2048
   key_opts     = ["decrypt", "encrypt", "sign", "verify", "wrapKey", "unwrapKey"]
-}
-
-# Store storage account connection string in Key Vault so Function App can reference it (no plaintext secrets in app settings)
-data "azurerm_client_config" "current" {}
-
-# Terraform identity needs to set secrets (e.g. storage connection string) during apply
-resource "azurerm_key_vault_access_policy" "terraform" {
-  key_vault_id = azurerm_key_vault.main.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
-  secret_permissions = ["Get", "List", "Set", "Delete", "Recover", "Purge"]
-  key_permissions    = ["Get", "List", "Create", "Decrypt", "Encrypt", "UnwrapKey", "WrapKey"]
+  depends_on   = [azurerm_key_vault_access_policy.terraform]
 }
 
 resource "azurerm_key_vault_secret" "storage_connection_string" {
@@ -102,7 +105,7 @@ resource "azurerm_key_vault_secret" "storage_connection_string" {
 
 # Linux Consumption plan for Azure Functions (.NET 8 isolated worker)
 resource "azurerm_service_plan" "functions" {
-  name                = "plan-${var.environment}-switchback-${var.name_suffix}"
+  name                = "plan-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   os_type             = "Linux"
@@ -143,6 +146,8 @@ resource "azurerm_linux_function_app" "main" {
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.main.connection_string
     # AzureWebJobsStorage: use Key Vault reference in production; for initial deploy use connection string
     "AzureWebJobsStorage" = azurerm_storage_account.main.primary_connection_string
+    # AzureOpenAI:Endpoint, AzureOpenAI:ApiKey, AzureOpenAI:Deployment should be set manually in Function App Configuration
+    # or via Key Vault references if you have an existing Azure OpenAI resource
   }
 }
 
@@ -153,4 +158,40 @@ resource "azurerm_key_vault_access_policy" "function_app" {
   object_id    = azurerm_linux_function_app.main.identity[0].principal_id
   secret_permissions = ["Get", "List"]
   key_permissions    = ["Get", "UnwrapKey", "WrapKey"]
+}
+
+# App Service Plan for admin Web app (Linux, F1 free tier for dev; B1 for prod if you need always-on)
+resource "azurerm_service_plan" "web" {
+  name                = "plan-web-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Linux"
+  sku_name            = var.environment == "prod" ? "B1" : "F1"
+  tags                = local.common_tags
+}
+
+# Linux Web app (admin UI – Rules, Connections, Activity)
+resource "azurerm_linux_web_app" "main" {
+  name                = "web-${var.environment}-switchback-${var.implementation}-${var.name_suffix}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  service_plan_id     = azurerm_service_plan.web.id
+  https_only          = true
+  tags                = local.common_tags
+
+  site_config {
+    application_stack {
+      dotnet_version = "8.0"
+    }
+    ftps_state          = "Disabled"
+    minimum_tls_version = "1.2"
+    # F1/Free plan does not support always_on
+    always_on = var.environment == "prod" ? true : false
+  }
+
+  app_settings = {
+    "ConnectionStrings__TableStorage"       = azurerm_storage_account.main.primary_connection_string
+    "Functions__BaseUrl"                    = "https://${azurerm_linux_function_app.main.default_hostname}"
+    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.main.connection_string
+  }
 }

@@ -4,29 +4,38 @@
     ViewData["Title"] = "Account connections";
 }
 
-<h1>Account connections</h1>
-
-@if (Model.ConnectedGmail)
-{
-    <p><strong>Gmail:</strong> Connected. <a href="@Model.DisconnectGmailUrl">Disconnect</a></p>
-}
-else
-{
-    <p><strong>Gmail:</strong> Not connected. <a href="@Model.ConnectGmailUrl">Connect Gmail</a></p>
-}
-
-@if (Model.ConnectedM365)
-{
-    <p><strong>Microsoft 365:</strong> Connected. <a href="@Model.DisconnectM365Url">Disconnect</a></p>
-}
-else
-{
-    <p><strong>Microsoft 365:</strong> Not connected. <a href="@Model.ConnectM365Url">Connect Microsoft 365</a></p>
-}
+<div class="page-header">
+    <h1>Account connections</h1>
+    <p class="description">Connect your Gmail and Microsoft 365 accounts so Switchback can classify and organize your email.</p>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.Message))
 {
-    <p><em>@Model.Message</em></p>
+    <div class="alert-success">@Model.Message</div>
 }
 
-<p><a asp-page="/Index">Home</a> | <a asp-page="/Logout">Log out</a></p>
+<div class="card">
+    <h2 class="card-title">Gmail</h2>
+    <p class="card-desc">Connect Gmail to apply rules and labels to your messages.</p>
+    @if (Model.ConnectedGmail)
+    {
+        <p><strong>Connected.</strong> <a href="@Model.DisconnectGmailUrl">Disconnect</a></p>
+    }
+    else
+    {
+        <a href="@Model.ConnectGmailUrl" class="btn btn-primary">Connect Gmail</a>
+    }
+</div>
+
+<div class="card">
+    <h2 class="card-title">Microsoft 365</h2>
+    <p class="card-desc">Connect Outlook / Microsoft 365 to apply rules and move messages to folders.</p>
+    @if (Model.ConnectedM365)
+    {
+        <p><strong>Connected.</strong> <a href="@Model.DisconnectM365Url">Disconnect</a></p>
+    }
+    else
+    {
+        <a href="@Model.ConnectM365Url" class="btn btn-primary">Connect Microsoft 365</a>
+    }
+</div>

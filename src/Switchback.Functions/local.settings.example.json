@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "Gmail:ClientId": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "Gmail:ClientSecret": "YOUR_GOOGLE_CLIENT_SECRET",
+    "Gmail:RedirectUri": "https://YOUR-NGROK-URL/api/auth/gmail/callback",
+
+    "M365:ClientId": "YOUR_AZURE_APP_CLIENT_ID",
+    "M365:ClientSecret": "YOUR_AZURE_APP_CLIENT_SECRET",
+    "M365:TenantId": "common",
+    "M365:RedirectUri": "https://YOUR-NGROK-URL/api/auth/m365/callback",
+
+    "Auth:WebBaseUrl": "https://localhost:5001",
+
+    "AzureOpenAI:Endpoint": "https://YOUR-RESOURCE.openai.azure.com/",
+    "AzureOpenAI:ApiKey": "YOUR_OPENAI_API_KEY",
+    "AzureOpenAI:Deployment": "gpt-4o-mini"
+  }
+}

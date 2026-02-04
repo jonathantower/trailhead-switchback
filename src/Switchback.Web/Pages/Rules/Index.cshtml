@@ -4,75 +4,87 @@
     ViewData["Title"] = "Rules";
 }
 
-<h1>Rules</h1>
+<div class="page-header">
+    <h1>Email categorization</h1>
+    <p class="description">Switchback will organize your emails using the rules below. Add rules to classify incoming email and route it to a folder (Outlook) or label (Gmail).</p>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.Error))
 {
-    <p><strong>@Model.Error</strong></p>
+    <div class="alert-error">@Model.Error</div>
 }
 @if (!string.IsNullOrEmpty(Model.Message))
 {
-    <p><em>@Model.Message</em></p>
+    <div class="alert-success">@Model.Message</div>
 }
 
-<p><a asp-page="Add">Add rule</a></p>
+<div class="info-banner">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <span>Rules are evaluated in order. The first matching rule is applied. Enable or disable rules without deleting them.</span>
+</div>
+
+<p>
+    <a asp-page="Add" class="btn btn-primary">Add rule</a>
+</p>
 
 @if (Model.Rules.Count == 0)
 {
-    <p>No rules yet. Add a rule to classify incoming email and route it to a destination.</p>
+    <div class="card">
+        <p class="card-desc">No rules yet. Add a rule to classify incoming email and route it to a destination.</p>
+    </div>
 }
 else
 {
-    <table>
-        <thead>
-            <tr>
-                <th>Order</th>
-                <th>Name</th>
-                <th>Prompt</th>
-                <th>Destination</th>
-                <th>Enabled</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (var i = 0; i < Model.Rules.Count; i++)
-            {
-                var rule = Model.Rules[i];
+    <div class="table-wrapper">
+        <table>
+            <thead>
                 <tr>
-                    <td>
-                        @if (i > 0)
-                        {
-                            <form method="post" asp-page-handler="Reorder" class="inline">
-                                <input type="hidden" name="order" value="@string.Join(",", Model.Rules.Select((r, j) => j == i - 1 ? rule.Id : (j == i ? Model.Rules[i - 1].Id : r.Id)))" />
-                                <button type="submit" title="Move up">↑</button>
-                            </form>
-                        }
-                        @if (i < Model.Rules.Count - 1)
-                        {
-                            <form method="post" asp-page-handler="Reorder" class="inline">
-                                <input type="hidden" name="order" value="@string.Join(",", Model.Rules.Select((r, j) => j == i ? Model.Rules[i + 1].Id : (j == i + 1 ? rule.Id : r.Id)))" />
-                                <button type="submit" title="Move down">↓</button>
-                            </form>
-                        }
-                        @(rule.Order + 1)
-                    </td>
-                    <td>@rule.Name</td>
-                    <td>@(rule.Prompt.Length > 50 ? rule.Prompt[..50] + "…" : rule.Prompt)</td>
-                    <td>@rule.Destination</td>
-                    <td>@(rule.Enabled ? "Yes" : "No")</td>
-                    <td>
-                        <a asp-page="Edit" asp-route-id="@rule.Id">Edit</a>
-                        <form method="post" asp-page-handler="Toggle" asp-route-id="@rule.Id" class="inline">
-                            <button type="submit">@(rule.Enabled ? "Disable" : "Enable")</button>
-                        </form>
-                        <form method="post" asp-page-handler="Delete" asp-route-id="@rule.Id" class="inline" onsubmit="return confirm('Delete this rule?');">
-                            <button type="submit">Delete</button>
-                        </form>
-                    </td>
+                    <th>Order</th>
+                    <th>Name</th>
+                    <th>Prompt</th>
+                    <th>Destination</th>
+                    <th>Enabled</th>
+                    <th>Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rules.Count; i++)
+                {
+                    var rule = Model.Rules[i];
+                    <tr>
+                        <td>
+                            @if (i > 0)
+                            {
+                                <form method="post" asp-page-handler="Reorder" class="inline-form">
+                                    <input type="hidden" name="order" value="@string.Join(",", Model.Rules.Select((r, j) => j == i - 1 ? rule.Id : (j == i ? Model.Rules[i - 1].Id : r.Id)))" />
+                                    <button type="submit" class="btn btn-secondary btn-sm" title="Move up">↑</button>
+                                </form>
+                            }
+                            @if (i < Model.Rules.Count - 1)
+                            {
+                                <form method="post" asp-page-handler="Reorder" class="inline-form">
+                                    <input type="hidden" name="order" value="@string.Join(",", Model.Rules.Select((r, j) => j == i ? Model.Rules[i + 1].Id : (j == i + 1 ? rule.Id : r.Id)))" />
+                                    <button type="submit" class="btn btn-secondary btn-sm" title="Move down">↓</button>
+                                </form>
+                            }
+                            @(rule.Order + 1)
+                        </td>
+                        <td>@rule.Name</td>
+                        <td>@(rule.Prompt.Length > 50 ? rule.Prompt[..50] + "…" : rule.Prompt)</td>
+                        <td>@rule.Destination</td>
+                        <td>@(rule.Enabled ? "Yes" : "No")</td>
+                        <td>
+                            <a asp-page="Edit" asp-route-id="@rule.Id" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="post" asp-page-handler="Toggle" asp-route-id="@rule.Id" class="inline-form">
+                                <button type="submit" class="btn btn-secondary btn-sm">@(rule.Enabled ? "Disable" : "Enable")</button>
+                            </form>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@rule.Id" class="inline-form" onsubmit="return confirm('Delete this rule?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
-
-<p><a asp-page="/Index">Home</a> | <a asp-page="/Connections">Connections</a> | <a asp-page="/Logout">Log out</a></p>

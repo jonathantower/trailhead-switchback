@@ -17,8 +17,9 @@ public sealed class TableActivityRepository : IActivityRepository
         ArgumentNullException.ThrowIfNull(userId);
         if (count <= 0) return Array.Empty<ActivityEntity>();
         var list = new List<ActivityEntity>();
+        var safeUserId = TableStorageConstants.EscapeODataString(userId);
         await foreach (var entity in _table.QueryAsync<ActivityEntity>(
-            filter: $"PartitionKey eq '{userId}'",
+            filter: $"PartitionKey eq '{safeUserId}'",
             maxPerPage: count,
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
@@ -34,8 +35,9 @@ public sealed class TableActivityRepository : IActivityRepository
         await _table.AddEntityAsync(entity, cancellationToken).ConfigureAwait(false);
 
         var all = new List<ActivityEntity>();
+        var safePartitionKey = TableStorageConstants.EscapeODataString(entity.PartitionKey);
         await foreach (var e in _table.QueryAsync<ActivityEntity>(
-            filter: $"PartitionKey eq '{entity.PartitionKey}'",
+            filter: $"PartitionKey eq '{safePartitionKey}'",
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             all.Add(e);
