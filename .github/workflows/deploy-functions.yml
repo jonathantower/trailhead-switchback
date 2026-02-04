@@ -2,7 +2,7 @@ name: Deploy Function App
 
 on:
   push:
-    branches: [main]
+    branches: [cursor-built]
     paths:
       - 'src/Switchback.Functions/**'
       - 'src/Switchback.Core/**'
