@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [main, cursor-built]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Switchback.sln'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main, cursor-built]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Switchback.sln'
+      - '.github/workflows/ci.yml'
 
 jobs:
   build-and-test:
